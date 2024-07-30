@@ -3,6 +3,8 @@ from selenium.webdriver.firefox.webdriver import WebDriver as Firefox
 from selenium.webdriver.safari.webdriver import WebDriver as Safari
 from selenium.webdriver.edge.webdriver import WebDriver as Edge
 from pytest import fixture
+import pytest
+import pytest_html
 from Pageobjects.homepage import HomePage
 from Pageobjects.loginPage import LoginPage
 from Pageobjects.registrationpage import RegistrationPage
@@ -82,6 +84,23 @@ def pages(_driver, config):
         def load(self):
             _driver.get(config.url)
             _driver.maximize_window()
-
-
     return Pages()
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_markreport(item,call):
+    outcome = yield
+    report = outcome.get_result()
+    extra = getattr(report,"extra",[])
+    if report.when == "call" or  report.when == "setup":
+        xfail = hasattr(report,"wasxfail")
+        if (report.skipped and xfail) or (report.failed and not xfail):
+            file = "failed_screenshot.png"
+            _driver.get_screenshot_as_file(file)
+            extra_html = '<div><img src ="%s" style="width:250px;height:250px;' \
+                'onclick="window.open(this.src)"align="right/></div>' % file
+            extra.append(pytest_html.extras.html(extra_html))
+        report.extra = extra
+
+
+
+
+
